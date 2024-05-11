@@ -1,0 +1,123 @@
+// 1. init package json
+// 2. install necessary dependencies or dev dependencies
+// 3. make tsconfig.json  and copy code for compilation
+// 4. write your schemas
+
+// Q:  what is migration
+// only apply the new changes to database while preserving the old state of the database
+
+// 5. migrate with database (prisma migrate command with dev enivorment and a name of the migration)
+// 6. generate client (also install if the client is not installed)
+
+///////////
+// A generator determines which assets are created when you run the prisma generate command. The main property provider defines which Prisma Client (language specific) is created
+
+// we can use multiple generators of a project
+
+// client is the code for interacting with database
+generator client {
+  provider = "prisma-client-js"
+}
+
+// we should only have one dataSource
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  // every single model in prisma should have some sort of id
+
+  // in models we have two optionals fields 1. Field type modeifer eg. ? 2. attribute starting with @ symbol 
+
+  id   String  @id @default(uuid())
+  name String?
+  // isAdmin       Boolean
+
+  // using the ENUM
+  role Role @default(ADMIN)
+
+  age           Int
+  email         String  @unique
+  isLargeNumber BigInt?
+  prefrences    Json?
+
+  // It is used to store binary data, such as images, files, or any other kind of raw binary data, in the database. prisma will automatically map the byte type to the that is supported by our database for storing the binray files
+  images Bytes?
+
+  // because prisma can also generate the schema file from our existing database 
+  // if it does not able to understand some type it will give it the type of Unsupported
+  // iDontKnow Unsupported("")
+
+  // one to many
+  // post Post[]
+
+  // one to many
+  // when one table have two refrences to the other table
+  writtenPost     Post[] @relation("writtenPost")
+  faviourtedPosts Post[] @relation("faviourtePost")
+
+  // one to one
+  // userPrefrence UserPrefrence?
+
+  userPrefrence   UserPrefrence? @relation(fields: [userPrefrenceId], references: [id])
+  userPrefrenceId String?        @unique
+
+  // block level attributes
+  // this prevent creating two users with the same name and email address.
+  @@unique([name, email])
+  // help in preformance for searching and sorting
+  @@index([email])
+}
+
+model UserPrefrence {
+  id          String  @id @default(uuid())
+  emailUpdate Boolean
+  darkMode    Boolean @default(false)
+
+  // one to one
+  // user   User   @relation(fields: [userId], references: [id])
+  // userId String @unique
+
+  user User?
+}
+
+model Post {
+  id                   String   @id @default(uuid())
+  rating               Float
+  ratingPreciseDecimal Decimal?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  title                String
+
+  // in relationship we are saying that userId field in post should have the refrence of the id from the user
+  // user   User   @relation(fields: [userId], references: [id])
+  // userId String
+
+  // one to many
+  writtenBy    User    @relation("writtenPost", fields: [writtenById], references: [id])
+  writtenById  String
+  FaviourtedBy User?   @relation("faviourtePost", fields: [faviourtedId], references: [id])
+  faviourtedId String?
+
+  // Many to Many
+  categories Category[]
+
+  // composite id key
+
+  // we are saying make id for a model by combining the title and writtenBId
+  // @@id([title, writtenById])
+}
+
+model Category {
+  id    String @id @default(uuid())
+  name  String @unique
+  // Many to Many
+  posts Post[]
+}
+
+enum Role {
+  BASIC
+  ADMIN
+  EDITOR
+}
